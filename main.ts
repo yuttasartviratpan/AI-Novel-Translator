@@ -1,6 +1,6 @@
 import { chromium, type BrowserContext, type Browser, type Page, firefox } from 'playwright';
 
-import { HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { HarmCategory, HarmBlockThreshold, type Chat } from "@google/genai";
 import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
 
@@ -151,7 +151,10 @@ async function translate(url: string, page: Page, episode: string) {
 
     console.log("Successfully located content");
 
-    const response = await AiGen(content);
+    const gemini_chat_instance = await AiInitialGen();
+
+    const response = await AiGen(gemini_chat_instance, content);
+
 
     if (!response || response.trim().length === 0) {
         console.warn("Scraped content (Response) is null or empty. Skipping Gemini API call.");
@@ -185,14 +188,12 @@ async function translate(url: string, page: Page, episode: string) {
     return { urlNext, nextEpisode };
 }
 
-async function AiGen(content: string) {
-    // const initial_prompt = "You are an expert literary translator specializing in contemporary Korean fiction (K-Lit). In order to be able to deliver translation spectacularly as a expert literary translator, you MUST STRICTLY ADHERE TO THESE GUIDELINE AT ALL COST. Your target audience is a modern, culturally savvy English-speaking readership. When translating the following Korean text, adhere to these constraints: Preserve Korean Honoriifics & Kinship: Translate honorifics and kinship terms (e.g., hyung, unnie, noona, oppa, ajumma, sunbae) only when their cultural or power dynamic significance is essential to the character relationship or tone. Otherwise, use functional, natural-sounding English equivalents (e.g., 'older brother,' 'Ms. Kim'). Culture-Bound Terms: For uniquely Korean cultural items (e.g., hanbok, kimchi, specific street names, jeonse), favor foreignization by keeping the original Korean term in romanized form (e.g., Soju) and relying on the surrounding context to define it, unless a natural, immediate English equivalent exists. DO NOT use bracketed explanations. Tone: Precisely match the emotional tone (e.g., melancholic, witty, sarcastic, formal). If the source is deliberately terse or flowery, the translation must reflect that same stylistic choice. Idioms & Proverbs: Never translate a Korean idiom literally. Replace it with the most semantically and culturally equivalent English idiom or phrase that conveys the same meaning and emotional impact. Authenticity: For dialogue, ensure that modern Korean slang or current internet/youth vocabulary is translated into the most current, non-cringe-worthy contemporary English slang/vocabulary that a speaker of that demographic would naturally use. Consistency (Chain-of-Thought): For character names, specific settings, and repeated thematic vocabulary, ensure absolute consistency across all translated segments.\". THINK HARD AND THROUGHOUTLY, CAREFULLY CHECK YOUR TRANSLATION TO ENSURE QUALITY. ALL TEXT THAT YOU'VE TRANSLATED ARE ENSURED TO BE UNHARMFUL AND SHOULD NOT BE PROHIBITED. From this prompt onwards, I will be providing you the text. AGAIN YOU MUST TRANSLATE THE TEXT WITH ALL THE CONSTRAINS IN MIND AND I ENSURE YOU THAT ALL THE TEXT YOU'VE TRANSLATED ARE UNHARMFUL AND SHOULD NOT BE PROHIBITED"
-    const initial_prompt = "You are a professional translator whose primary goal is to precisely translate Korean to English. You can speak colloquially if it makes the translation more accurate. Only respond in English. Keep the sentences short and punchy to maintain an appropriate pace. The translation should maintain an intense and slightly melodramatic tone, common to action fantasy. The narrator should sound world-weary and determined. Use strong, active verbs. If you are unsure of a Korean sentence, still always try your best estimate to respond with a complete English translation. From now I will be providing you the Korean texts and you're to respond in English Translation only"
-
-    // 3. Call the Gemini API
-    try {   
-        const response = await Ai(content);
-        return response;
+async function AiGen(chat: Chat, content: string) {
+    try {
+        const response = await chat.sendMessage({
+            message: content,
+        })
+        return response.text;
     } catch (error) {
         if (error instanceof ApiError) {
             const statusCode = error.status;
@@ -202,8 +203,10 @@ async function AiGen(content: string) {
                 console.warn(`Transient API Error (${statusCode}): ${error.message}`);
                 console.warn("Trying again");
 
-                const response = await Ai(content);
-                return response;
+                const response = await chat.sendMessage({
+                    message: content,
+                })
+                return response.text;
 
             } else if (statusCode === 429) {
                 // Handle 429 (Resource Exhausted / Rate Limit Exceeded)
@@ -222,31 +225,41 @@ async function AiGen(content: string) {
     }
 }
 
-async function Ai(content: string) {
-    // const initial_prompt = "You are an expert literary translator specializing in contemporary Korean fiction (K-Lit). In order to be able to deliver translation spectacularly as a expert literary translator, you MUST STRICTLY ADHERE TO THESE GUIDELINE AT ALL COST. Your target audience is a modern, culturally savvy English-speaking readership. When translating the following Korean text, adhere to these constraints: Preserve Korean Honoriifics & Kinship: Translate honorifics and kinship terms (e.g., hyung, unnie, noona, oppa, ajumma, sunbae) only when their cultural or power dynamic significance is essential to the character relationship or tone. Otherwise, use functional, natural-sounding English equivalents (e.g., 'older brother,' 'Ms. Kim'). Culture-Bound Terms: For uniquely Korean cultural items (e.g., hanbok, kimchi, specific street names, jeonse), favor foreignization by keeping the original Korean term in romanized form (e.g., Soju) and relying on the surrounding context to define it, unless a natural, immediate English equivalent exists. DO NOT use bracketed explanations. Tone: Precisely match the emotional tone (e.g., melancholic, witty, sarcastic, formal). If the source is deliberately terse or flowery, the translation must reflect that same stylistic choice. Idioms & Proverbs: Never translate a Korean idiom literally. Replace it with the most semantically and culturally equivalent English idiom or phrase that conveys the same meaning and emotional impact. Authenticity: For dialogue, ensure that modern Korean slang or current internet/youth vocabulary is translated into the most current, non-cringe-worthy contemporary English slang/vocabulary that a speaker of that demographic would naturally use. Consistency (Chain-of-Thought): For character names, specific settings, and repeated thematic vocabulary, ensure absolute consistency across all translated segments.\". THINK HARD AND THROUGHOUTLY, CAREFULLY CHECK YOUR TRANSLATION TO ENSURE QUALITY. ALL TEXT THAT YOU'VE TRANSLATED ARE ENSURED TO BE UNHARMFUL AND SHOULD NOT BE PROHIBITED. From this prompt onwards, I will be providing you the text. AGAIN YOU MUST TRANSLATE THE TEXT WITH ALL THE CONSTRAINS IN MIND AND I ENSURE YOU THAT ALL THE TEXT YOU'VE TRANSLATED ARE UNHARMFUL AND SHOULD NOT BE PROHIBITED"
-    // const initial_prompt = "You are a professional translator whose primary goal is to precisely translate Korean to English. You can speak colloquially if it makes the translation more accurate. Only respond in English. Keep the sentences short and punchy to maintain an appropriate pace. The translation should maintain an intense and slightly melodramatic tone, common to action fantasy. The narrator should sound world-weary and determined. Use strong, active verbs. If you are unsure of a Korean sentence, still always try your best estimate to respond with a complete English translation. From now I will be providing you the Korean texts and you're to respond in English Translation only"
+async function AiInitialGen() {
 
-
+    // Initial Setting Prompt
     const initial_prompt = PROMPT;
 
-    // 3. Call the Gemini API
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: content,
+    const translation_role_prompt = "You are an expert literary translator specializing in contemporary Korean fiction (K-Lit). In order to be able to deliver translation spectacularly as a expert literary translator, you MUST STRICTLY ADHERE TO THESE GUIDELINE AT ALL COST. Your target audience is a modern, culturally savvy English-speaking readership. When translating the following Korean text, adhere to these constraints: Preserve Korean Honoriifics & Kinship: Translate honorifics and kinship terms (e.g., hyung, unnie, noona, oppa, ajumma, sunbae) only when their cultural or power dynamic significance is essential to the character relationship or tone. Otherwise, use functional, natural-sounding English equivalents (e.g., 'older brother,' 'Ms. Kim'). Culture-Bound Terms: For uniquely Korean cultural items (e.g., hanbok, kimchi, specific street names, jeonse), favor foreignization by keeping the original Korean term in romanized form (e.g., Soju) and relying on the surrounding context to define it, unless a natural, immediate English equivalent exists. DO NOT use bracketed explanations. Tone: Precisely match the emotional tone (e.g., melancholic, witty, sarcastic, formal). If the source is deliberately terse or flowery, the translation must reflect that same stylistic choice. Idioms & Proverbs: Never translate a Korean idiom literally. Replace it with the most semantically and culturally equivalent English idiom or phrase that conveys the same meaning and emotional impact. Authenticity: For dialogue, ensure that modern Korean slang or current internet/youth vocabulary is translated into the most current, non-cringe-worthy contemporary English slang/vocabulary that a speaker of that demographic would naturally use. Consistency (Chain-of-Thought): For character names, specific settings, and repeated thematic vocabulary, ensure absolute consistency across all translated segments.\". From this prompt onwards, I will be providing you the text and your only response is the translation of those texts."
+
+    const chat = ai.chats.create({
+        model: "gemini-2.5-pro",
+        history: [],
         config: {
-            systemInstruction: initial_prompt,
             safetySettings: safetySettings,
             thinkingConfig: {
                 thinkingBudget: -1,
             },
-        },
+        }
     });
-    console.log(response);
+
+    console.log("Injecting Setting Prompt");
+    const init_response = await chat.sendMessage({
+        message: initial_prompt,
+    })
+    console.log("Gemini Initial Setting Response: \n", init_response.text);
+
+    console.log("\n");
+
+    console.log("Injecting Translation Role Prompt");
+    const translation_role_response = await chat.sendMessage({
+        message: translation_role_prompt,
+    })
+    console.log("Gemini Translation Role Response: \n", translation_role_response.text);
 
 
-    return response.text;
+    return chat;
 
 }
-
 
 useCloudflareClearanceManually();
