@@ -193,6 +193,7 @@ async function AiGen(chat: Chat, content: string) {
         const response = await chat.sendMessage({
             message: content,
         })
+        console.log(response);
         return response.text;
     } catch (error) {
         if (error instanceof ApiError) {
@@ -206,6 +207,7 @@ async function AiGen(chat: Chat, content: string) {
                 const response = await chat.sendMessage({
                     message: content,
                 })
+
                 return response.text;
 
             } else if (statusCode === 429) {
@@ -234,7 +236,16 @@ async function AiInitialGen() {
 
     const chat = ai.chats.create({
         model: "gemini-2.5-pro",
-        history: [],
+        history: [
+            {
+                role: "user",
+                parts: [{ text: "You are to put ➛ Before you reply every single time from now on" }],
+            },
+            {
+                role: "model",
+                parts: [{ text: "➛ Understood" }],
+            },
+        ],
         config: {
             safetySettings: safetySettings,
             thinkingConfig: {
