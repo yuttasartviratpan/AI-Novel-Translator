@@ -12,6 +12,8 @@
     "fs": "^0.0.1-security",
     "playwright": "^1.56.0",
     "playwright-extra": "^4.3.6",
+    "puppeteer": "^24.27.0",
+    "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2"
   },
   "scripts": {
