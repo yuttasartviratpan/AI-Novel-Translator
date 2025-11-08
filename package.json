@@ -1,22 +1,24 @@
 {
   "name": "translator",
   "version": "1.0.0",
-  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
   "devDependencies": {
-    "@types/node": "^24.9.1",
     "typescript": "^5.9.3"
   },
   "dependencies": {
     "@google/genai": "^1.24.0",
     "dotenv": "^17.2.3",
     "fs": "^0.0.1-security",
-    "playwright": "^1.56.0",
-    "playwright-extra": "^4.3.6",
-    "puppeteer": "^24.27.0",
+    "puppeteer": "^24.29.1",
     "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-adblocker": "^2.13.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2"
-  },
-  "scripts": {
-    "tsx": "tsx"
   }
 }
