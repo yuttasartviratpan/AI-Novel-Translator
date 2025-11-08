@@ -144,3 +144,4 @@ vite.config.ts.timestamp-*
 output/
 web.txt
 prompt.txt
+old-main.ts
